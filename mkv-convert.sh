@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# The #~~! is used at the end of lines to easily find/replace with
+# something like &> /dev/null to quiet this script considerably.
+
+
 if [ ! -d $TMPDIR ]; then
     mkdir $TMPDIR
     tmpexists="true"
@@ -18,7 +22,8 @@ function audio {
 	mkvextract tracks "$file" $1:$TMPDIR/$pid-$n.$suf #~~!
     else
 	mkvextract tracks "$file" $1:$TMPDIR/a.$suf #~~!
-	ffmpeg -i $TMPDIR/a.$suf -strict experimental -acodec aac -ab 684k $TMPDIR/$pid-$n.aac #~~!
+	# Threads should work but doesn't seem to have any effect.
+	ffmpeg -threads 4 -i $TMPDIR/a.$suf -strict experimental -acodec aac -ab 300k $TMPDIR/$pid-$n.aac #~~!
        	rm $TMPDIR/a.$suf
 	suf='aac'
     fi
@@ -51,14 +56,15 @@ function convertmkv {
 	t=$(expr $i '+' 1)
 	ttype="${trackinfo[$num + 1]}"
 	codec="${trackinfo[$num + 2]}"
-	fps=$(mkvinfo "$file" | grep duration | sed 's/.*(//' | sed 's/f.*//' | head -n 1)
-
+#	fps=$(mkvinfo "$file" | grep duration | sed 's/.*(//' | sed 's/f.*//' | head -n 1)
+# Sometimes an incorrect fps is defined before the correct one. Temporary bugfix to set the fps.
+	fps='23.976'
 	if [ $ttype = 'audio' ]; then
 	    audio $t $codec
-	elif [ $ttype = 'subtitles' ]; then
-	    suf="srt"
-	    mkvextract tracks "$file" $t:$TMPDIR/$pid-$n.srt #~~!
-	    tracks+=" -add $TMPDIR/$pid-$n.srt"
+	# elif [ $ttype = 'subtitles' ]; then
+	#     suf="srt"
+	#     mkvextract tracks "$file" $t:$TMPDIR/$pid-$n.srt #~~!
+	#     tracks+=" -add $TMPDIR/$pid-$n.srt"
 	elif [ $ttype = 'video' ]; then
 	    suf="264"
 	    mkvextract tracks "$file" $t:$TMPDIR/$pid-$n.264 #~~!
